@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام مسحوبات الموظفين</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            text-align: right;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .balance-box {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: none;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .reset-btn {
+            background-color: #dc3545;
+            margin-top: 20px;
+            font-size: 14px;
+            padding: 10px;
+        }
+        .reset-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>نظام مسحوبات الموظفين</h2>
+    
+    <label for="employee">اختر الموظف:</label>
+    <select id="employee" onchange="updateBalanceDisplay()">
+        <option value="محمد رحيم">محمد رحيم</option>
+        <option value="خديجة عداي">خديجة عداي</option>
+        <option value="بصائر مشتاق">بصائر مشتاق</option>
+        <option value="نبأ خلف">نبأ خلف</option>
+        <option value="مؤمل يسنين">مؤمل يسنين</option>
+        <option value="يوسف مرتضى">يوسف مرتضى</option>
+        <option value="نور الهدى عماد">نور الهدى عماد</option>
+        <option value="يحيى قاسم">يحيى قاسم</option>
+        <option value="احمد انور">احمد انور</option>
+        <option value="احمد خالد">احمد خالد</option>
+        <option value="احمد حسن">احمد حسن</option>
+    </select>
+
+    <div class="balance-box">
+        الرصيد المتبقي: <span id="currentBalance">50000</span>
+    </div>
+
+    <label for="amount">مبلغ السحب:</label>
+    <input type="number" id="amount" placeholder="أدخل المبلغ (مثال: 4000)">
+
+    <button onclick="processDeduction()">خصم المبلغ</button>
+
+    <div id="msg" class="message"></div>
+
+    <hr style="margin-top: 30px; border: 0.5px solid #eee;">
+    <button class="reset-btn" onclick="resetAllBalances()">إعادة تعيين جميع الأرصدة لـ 50,000</button>
+</div>
+
+<script>
+    // الحد الأقصى للرصيد
+    const MAX_BALANCE = 50000;
+    
+    // جلب بيانات الأرصدة من الذاكرة أو إنشاء أرصدة جديدة
+    let employeeData = JSON.parse(localStorage.getItem('agencyEmployees')) || {};
+
+    // التأكد من أن كل موظف في القائمة له رصيد مبدئي
+    const selectElement = document.getElementById('employee');
+    for (let i = 0; i < selectElement.options.length; i++) {
+        let empName = selectElement.options[i].value;
+        if (employeeData[empName] === undefined) {
+            employeeData[empName] = MAX_BALANCE;
+        }
+    }
+    
+    // تحديث العرض عند تحميل الصفحة
+    updateBalanceDisplay();
+
+    function updateBalanceDisplay() {
+        const empName = document.getElementById('employee').value;
+        document.getElementById('currentBalance').innerText = employeeData[empName].toLocaleString();
+        hideMessage();
+    }
+
+    function processDeduction() {
+        const empName = document.getElementById('employee').value;
+        const amountInput = document.getElementById('amount').value;
+        const amount = parseInt(amountInput);
+
+        // التحقق من صحة المبلغ المدخل
+        if (isNaN(amount) || amount <= 0) {
+            showMessage("الرجاء إدخال مبلغ صحيح", "error");
+            return;
+        }
+
+        let currentBalance = employeeData[empName];
+
+        // التحقق إذا كان الرصيد منتهي مسبقاً
+        if (currentBalance <= 0) {
+            showMessage("انتهى رصيدك!", "error");
+            return;
+        }
+
+        // التحقق إذا كان المبلغ المطلوب أكبر من الرصيد المتبقي
+        if (amount > currentBalance) {
+            showMessage("المبلغ المطلوب أكبر من الرصيد المتبقي!", "error");
+            return;
+        }
+
+        // خصم المبلغ وتحديث الذاكرة
+        employeeData[empName] -= amount;
+        localStorage.setItem('agencyEmployees', JSON.stringify(employeeData));
+        
+        // تحديث الواجهة
+        updateBalanceDisplay();
+        document.getElementById('amount').value = ''; // تفريغ الحقل
+
+        // عرض رسالة النجاح أو انتهاء الرصيد
+        if (employeeData[empName] === 0) {
+            showMessage("تم الخصم بنجاح. انتهى رصيدك!", "error");
+        } else {
+            showMessage(`تم خصم ${amount.toLocaleString()} بنجاح.`, "success");
+        }
+    }
+
+    function showMessage(text, type) {
+        const msgDiv = document.getElementById('msg');
+        msgDiv.innerText = text;
+        msgDiv.className = `message ${type}`;
+        msgDiv.style.display = 'block';
+        
+        // إخفاء رسالة النجاح بعد 3 ثواني
+        if(type === 'success') {
+            setTimeout(hideMessage, 3000);
+        }
+    }
+
+    function hideMessage() {
+        document.getElementById('msg').style.display = 'none';
+    }
+
+    function resetAllBalances() {
+        // طلب كلمة المرور
+        const password = prompt("الرجاء إدخال كلمة المرور لإعادة التعيين:");
+        
+        // التحقق من أن المستخدم لم يضغط على "إلغاء" وأدخل كلمة المرور
+        if (password !== null) {
+            if (password === "103130") {
+                if(confirm("كلمة المرور صحيحة. هل أنت متأكد أنك تريد إعادة جميع الأرصدة إلى 50,000؟")) {
+                    for (let key in employeeData) {
+                        employeeData[key] = MAX_BALANCE;
+                    }
+                    localStorage.setItem('agencyEmployees', JSON.stringify(employeeData));
+                    updateBalanceDisplay();
+                    showMessage("تم إعادة تعيين جميع الأرصدة بنجاح", "success");
+                }
+            } else {
+                showMessage("كلمة المرور خاطئة!", "error");
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
